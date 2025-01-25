@@ -2083,9 +2083,9 @@ $controlsPanel.BackColor = [System.Drawing.Color]::FromArgb(80, [System.Drawing.
 $backgroundPanel1.Controls.Add($controlsPanel)
 
 $labelIHS = New-Object System.Windows.Forms.Label
-$labelIHS.Text = "IHS UPL Script : AD Menu"
+$labelIHS.Text = "IndiaCore UPL Script : AD Menu"
 $labelIHS.AutoSize = $True
-$labelIHS.Size = New-Object System.Drawing.Size(250, 30) 
+$labelIHS.Size = New-Object System.Drawing.Size(248, 30) 
 $labelIHS.Location = New-Object System.Drawing.Point(6, 10)
 $labelIHS.Font = New-Object System.Drawing.Font("Cambria",14,[System.Drawing.FontStyle]::Bold)
 $labelIHS.ForeColor = "Black"
@@ -2118,7 +2118,7 @@ $helpPanel.Controls.Add($helpLabel)
 
      $IHDNDLBT = New-Object System.Windows.Forms.Button
     $IHDNDLBT.Text = "Module Check"
-    $IHDNDLBT.Location = New-Object System.Drawing.Point(280, 10)
+    $IHDNDLBT.Location = New-Object System.Drawing.Point(282, 10)
     $IHDNDLBT.AutoSize = $True
     $IHDNDLBT.ForeColor = "White"
     $IHDNDLBT.BackColor = "Gray"
@@ -2328,7 +2328,7 @@ $IHSGRPTSK.Add_MouseLeave({
 })
 
 $M365IHS = New-Object System.Windows.Forms.Label
-$M365IHS.Text = "IHS UPL Script : M365 Menu"
+$M365IHS.Text = "IndisCore UPL Script : M365 Menu"
 $M365IHS.AutoSize = $True
 $M365IHS.Size = New-Object System.Drawing.Size(250, 30) # Set the desired width and height
 $M365IHS.Location = New-Object System.Drawing.Point(6, 200)
