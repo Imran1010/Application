@@ -6,11 +6,13 @@ $ALL = "C:\IHS-Application\IHS-Template.csv"
 if (-not (Test-Path $MKDIR)) {
 New-Item -Path $MKDIR -ItemType Directory 
 }
-$IHSCSV = "UserName,AssignLicenses,RevokeLicenses,AddGroups,RemoveGroups,DLName,UserPrincipalName,Action.ToLower"
+$IHSCSV = "UserName,AssignLicenses,RevokeLicenses,AddGroups,RemoveGroups,DLName,UserPrincipalName,Action.ToLower,DelegateUserPrincipalName,PermissionType"
 Set-Content -Path $ALL -Value $IHSCSV
 Start-Transcript -Path C:\IHS-Application\IHS-LOGS-PS-MENU.log -Append
 Get-Date -Format "dddd MM/dd/yyyy HH:mm K"
 $maximumfunctioncount = '32768'
+$server = "UMUMWPDC01.upl.com"
+
 
 function Get-ImageFromUrl {
     param (
@@ -222,15 +224,15 @@ function Show-ModuleStatusForm {
     $services = @{
         "Azure AD" = @{
             ModuleName = "AzureAD"
-            ConnectCmd = { Connect-AzureAD -ShowBanner:$false }
+            ConnectCmd = { Connect-AzureAD }  #-ShowBanner:$false 
         }
         "Exchange Online" = @{
             ModuleName = "ExchangeOnlineManagement"
-            ConnectCmd = { Connect-ExchangeOnline -ShowBanner:$false }
+            ConnectCmd = { Connect-ExchangeOnline }  #-ShowBanner:$false 
         }
         "Microsoft Graph" = @{
             ModuleName = "Microsoft.Graph"
-            ConnectCmd = { Connect-MgGraph -ShowBanner:$false }
+            ConnectCmd = { Connect-MgGraph }
         }
     }
 
@@ -392,7 +394,7 @@ $UGDNInputResult = $UGDNInputForm.ShowDialog()
 if ($UGDNInputResult -eq [System.Windows.Forms.DialogResult]::OK) {
     $IHSUS = $UGDNInputTextBox.Text
 
-    $IHSUSIF = Get-ADUser -Filter { SamAccountName -like $IHSUS } -Properties SamAccountName, DistinguishedName, LockedOut, Enabled | Select-Object SamAccountName, DistinguishedName, LockedOut, Enabled
+    $IHSUSIF = Get-ADUser -Server $server -Filter { SamAccountName -like $IHSUS } -Properties SamAccountName, DistinguishedName, LockedOut, Enabled | Select-Object SamAccountName, DistinguishedName, LockedOut, Enabled
 
     if ($IHSUSIF) {
         $lockstatus = $IHSUSIF.LockedOut
@@ -413,7 +415,7 @@ if ($UGDNInputResult -eq [System.Windows.Forms.DialogResult]::OK) {
            
             $IHSNWPW = Read-Host "Enter New Password" -AsSecureString
             
-            Set-ADAccountPassword -Identity $IHSUSIF.SamAccountName -NewPassword $IHSNWPW -Reset
+            Set-ADAccountPassword -Server $server -Identity $IHSUSIF.SamAccountName -NewPassword $IHSNWPW -Reset
             Write-Host -ForegroundColor Green "Password reset successfully"
             [System.Windows.Forms.MessageBox]::Show("UGDN Password reset", "Success", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 
@@ -501,7 +503,7 @@ $MAILInputForm.Controls.Add($MAILInputCancelButton)
 if ($UGDNInputResult -eq [System.Windows.Forms.DialogResult]::OK) {
     $IHSUS = $UGDNInputTextBox.Text
 
-    $IHSUSIF = Get-ADUser -Filter { SamAccountName -like $IHSUS } -Properties SamAccountName, DistinguishedName, LockedOut, Enabled | Select-Object SamAccountName, DistinguishedName, LockedOut, Enabled, Mail
+    $IHSUSIF = Get-ADUser -Server $server -Filter { SamAccountName -like $IHSUS } -Properties SamAccountName, DistinguishedName, LockedOut, Enabled | Select-Object SamAccountName, DistinguishedName, LockedOut, Enabled, Mail
 
     if ($IHSUSIF) {
         $lockstatus = $IHSUSIF.LockedOut
@@ -535,7 +537,7 @@ $MAILInputResult = $MAILInputForm.ShowDialog()
 
                         $proxyAddress = "SMTP:" + $userEmailAddress
 
-                        Set-ADUser -Identity $IHSUS -Add @{proxyAddresses=$proxyAddress}
+                        Set-ADUser -Server $server -Identity $IHSUS -Add @{proxyAddresses=$proxyAddress}
 
                         Write-Host "`nEmail address and SMTP proxy address added successfully for user $IHSUS" -ForegroundColor Green
       [System.Windows.Forms.MessageBox]::Show("Email address and SMTP proxy address added for $IHSUS", "Successfully", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
@@ -601,7 +603,7 @@ $UGDNInputResult = $UGDNInputForm.ShowDialog()
 if ($UGDNInputResult -eq [System.Windows.Forms.DialogResult]::OK) {
     $IHSUS = $UGDNInputTextBox.Text
 
-    $IHSUSIF = Get-ADUser -Filter { SamAccountName -like $IHSUS } -Properties SamAccountName, DistinguishedName, LockedOut, Enabled | Select-Object SamAccountName, DistinguishedName, LockedOut, Enabled
+    $IHSUSIF = Get-ADUser -Server $server -Filter { SamAccountName -like $IHSUS } -Properties SamAccountName, DistinguishedName, LockedOut, Enabled | Select-Object SamAccountName, DistinguishedName, LockedOut, Enabled
 
     if ($IHSUSIF) {
         $lockstatus = $IHSUSIF.LockedOut
@@ -620,8 +622,8 @@ if ($UGDNInputResult -eq [System.Windows.Forms.DialogResult]::OK) {
         else {
             Write-Host -ForegroundColor Green "We checked Account is Unlocked"
 
-            Set-ADUser -Identity $IHSUSIF.SamAccountName -Clear Comment
-            $user = Get-ADUser -Identity $IHSUSIF.SamAccountName -Properties Comment
+            Set-ADUser -Server $server -Identity $IHSUSIF.SamAccountName -Clear Comment
+            $user = Get-ADUser -Server $server -Identity $IHSUSIF.SamAccountName -Properties Comment
             
             Write-Host -ForegroundColor Green "Comment reset successfully"
 [System.Windows.Forms.MessageBox]::Show("Comment reset", "Successfully", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
@@ -698,7 +700,7 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
     $userA = $userATextBox.Text
     $userB = $userBTextBox.Text
 
-    $userAGroups = Get-ADUser -Identity $userA -Properties MemberOf | Select-Object -ExpandProperty MemberOf
+    $userAGroups = Get-ADUser -Server $server -Identity $userA -Properties MemberOf | Select-Object -ExpandProperty MemberOf
 
     foreach ($group in $userAGroups) {
         Add-ADGroupMember -Identity $group -Members $userB
@@ -725,7 +727,7 @@ $IHSEXPATH = "C:\IHS-Application\ADUserexport-$currentDate.csv"
 
 $IHSPRPTS = 'SamAccountName','UserPrincipalName','Mail','Name','CanonicalName','DisplayName','Enabled','distinguishedName','manager','employeeid','extensionAttribute1','extensionAttribute2','extensionAttribute3','extensionAttribute4','extensionAttribute5','extensionAttribute6','extensionAttribute7','extensionAttribute8','extensionAttribute9','extensionAttribute10','extensionAttribute11','extensionAttribute12','extensionAttribute13','extensionAttribute14','extensionAttribute15','CannotChangePassword','LastLogonDate','street','PasswordLastSet','PasswordExpired','PasswordNeverExpires','AccountExpirationDate','Office','City','whenCreated','Description'
 
-Get-ADUser -Filter * -Properties $IHSPRPTS | Select-Object $IHSPRPTS | Export-csv -path $IHSEXPATH -NoTypeInformation -Encoding UTF8
+Get-ADUser -Server $server -Filter * -Properties $IHSPRPTS | Select-Object $IHSPRPTS | Export-csv -path $IHSEXPATH -NoTypeInformation -Encoding UTF8
 
 Write-Host "AD Users has been successfully Exported on C Drive" 
 
@@ -776,7 +778,7 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
     # UPL >> 
     $IHSPRPTS = 'Name','SamAccountName','DisplayName','UserPrincipalName','Mail','LastLogonDate','street','PasswordLastSet','CannotChangePassword','PasswordExpired','PasswordNeverExpires','AccountExpirationDate','CanonicalName','Enabled','employeeid','Office','City','whenCreated','distinguishedName','extensionAttribute1','extensionAttribute2','extensionAttribute3','extensionAttribute4','extensionAttribute5','extensionAttribute6','extensionAttribute7','extensionAttribute8','extensionAttribute9','extensionAttribute10','extensionAttribute11','extensionAttribute12','extensionAttribute13','extensionAttribute14','extensionAttribute15','Description'
 
-    Get-ADUser -Filter * -Properties $IHSPRPTS -SearchBase $IHS | Select-Object $IHSPRPTS | Export-csv -path $IHSEXPATH -NoTypeInformation -Encoding UTF8
+    Get-ADUser -Server $server -Filter * -Properties $IHSPRPTS -SearchBase $IHS | Select-Object $IHSPRPTS | Export-csv -path $IHSEXPATH -NoTypeInformation -Encoding UTF8
 
 
 
@@ -802,7 +804,7 @@ $usernames = Import-Csv -Path $IHSINPT | Select-Object -ExpandProperty UserName
 $userInfoArray = @()
 
 foreach ($username in $usernames) {
-    $user = Get-ADUser -Filter { SamAccountName -eq $username } -Properties $propertiesToRetrieve
+    $user = Get-ADUser -Server $server -Filter { SamAccountName -eq $username } -Properties $propertiesToRetrieve
     if ($user) {
         $userInfoArray += $user | Select-Object $propertiesToRetrieve
     } else {
@@ -847,18 +849,16 @@ $userUPN = $textBox.Text.Trim()
 
 if (-not [string]::IsNullOrWhiteSpace($userUPN)) {
     try {
-        $user = Get-ADUser -Filter "sAMAccountName -eq '$userUPN'" -Properties SamAccountName, UserPrincipalName, ObjectGUID     
-        if ($null -eq $user) {
+        $user = Get-ADUser -Server $server -Identity $userUPN -Properties objectGUID, ms-DS-ConsistencyGuid  
+               if ($null -eq $user) {
             throw "User not found in Active Directory."
         }
-        $userUPN = $user.UserPrincipalName
-        $immutableId = [System.Convert]::ToBase64String($user.ObjectGUID.ToByteArray())
-        $azureUser = Get-MgUser -Filter "UserPrincipalName eq '$userUPN'"
-        
-        if ($null -eq $azureUser) {
-            throw "User not found in Microsoft 365."
-        }
+       $sourceGuid = $user.'ms-DS-ConsistencyGuid'
+if (-not $sourceGuid) {
+    $sourceGuid = $user.objectGUID
+}
 
+$immutableId = [System.Convert]::ToBase64String($sourceGuid.ToByteArray())
         $messageBoxText = "User's Immutable ID: $immutableId"
         $messageBoxCaption = "Immutable ID"
         $messageBoxButtons = [System.Windows.MessageBoxButton]::OKCancel
@@ -909,6 +909,7 @@ foreach ($entry in $entries) {
     $samAccountName = $entry.Username
     $addGroups = $entry.AddGroups -split "," | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
     $removeGroups = $entry.RemoveGroups -split "," | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
+    $server = "UMUMWPDC01.upl.com"
 
     if (-not $samAccountName) {
         Write-Host "Skipping entry with missing Username." -ForegroundColor Yellow
@@ -916,7 +917,7 @@ foreach ($entry in $entries) {
     }
 
     try {
-        $user = Get-ADUser -Filter { SamAccountName -eq $samAccountName } -ErrorAction Stop
+        $user = Get-ADUser -Server $server -Filter { SamAccountName -eq $samAccountName } -ErrorAction Stop
         if (-not $user) {
             throw "User $samAccountName not found"
         }
@@ -924,12 +925,12 @@ foreach ($entry in $entries) {
         foreach ($groupName in $addGroups) {
             if ($groupName) {
                 try {
-                    $group = Get-ADGroup -Filter { Name -eq $groupName } -ErrorAction Stop
+                    $group = Get-ADGroup -Server $server -Filter { Name -eq $groupName } -ErrorAction Stop
                     if (-not $group) {
                         throw "Group $groupName not found"
                     }
 
-                    Add-ADGroupMember -Identity $group -Members $user -ErrorAction Stop
+                    Add-ADGroupMember  -Server $server -Identity $group -Members $user -ErrorAction Stop
                     Write-Host "Successfully added $samAccountName to $groupName."
 
                     $logData += [pscustomobject]@{
@@ -955,12 +956,12 @@ foreach ($entry in $entries) {
         foreach ($groupName in $removeGroups) {
             if ($groupName) {
                 try {
-                    $group = Get-ADGroup -Filter { Name -eq $groupName } -ErrorAction Stop
+                    $group = Get-ADGroup -Server $server  -Filter { Name -eq $groupName } -ErrorAction Stop
                     if (-not $group) {
                         throw "Group $groupName not found"
                     }
 
-                    Remove-ADGroupMember -Identity $group -Members $user -Confirm:$false -ErrorAction Stop
+                    Remove-ADGroupMember  -Server $server -Identity $group -Members $user -Confirm:$false -ErrorAction Stop
                     Write-Host "Successfully removed $samAccountName from $groupName."
 
                     $logData += [pscustomobject]@{
@@ -1086,7 +1087,7 @@ function Check-NetworkConnectivity {
 
 function Connect-ToExchangeOnline {
     
-        Connect-ExchangeOnline -UserPrincipalName "30035113@upl-ltd.com"
+        Connect-ExchangeOnline #-UserPrincipalName "30035113@upl-ltd.com"
 [System.Windows.Forms.MessageBox]::Show("Exchange Online Connected", "Successful", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 
     
@@ -1368,7 +1369,7 @@ function IHS-ADGRPEXP-PT {
         foreach ($groupName in $groupNames) {
             try {
                 # Get group members and append to array
-                $members = Get-ADGroupMember -Identity $groupName | 
+                $members = Get-ADGroupMember -Server $server -Identity $groupName | 
                            Select-Object @{Name="GroupName";Expression={$groupName}}, SamAccountName
                 $allGroupMembers += $members
 
@@ -1478,7 +1479,7 @@ function IHSM365LCMU {
 $statusButton.Add_Click({
         $samAccountName = $textBoxSamAccount.Text.Trim()
         if (-not [string]::IsNullOrWhiteSpace($samAccountName)) {
-            $user = Get-ADUser -Identity $samAccountName -Properties UserPrincipalName , DisplayName
+            $user = Get-ADUser -Server $server -Identity $samAccountName -Properties UserPrincipalName , DisplayName
             if ($user) {
                 $userUPN = $user.UserPrincipalName
                 $userUPN1 = $user.DisplayName
@@ -1502,7 +1503,7 @@ $statusButton.Add_Click({
     $buttonAssign.Add_Click({
         $samAccountName = $textBoxSamAccount.Text.Trim()
         if (-not [string]::IsNullOrWhiteSpace($samAccountName)) {
-            $user = Get-ADUser -Identity $samAccountName -Properties UserPrincipalName, UserPrincipalName
+            $user = Get-ADUser -Server $server -Identity $samAccountName -Properties UserPrincipalName, UserPrincipalName
             if ($user) {
                 $userUPN = $user.UserPrincipalName
                 $licensesToAssign = @()
@@ -1539,7 +1540,7 @@ $statusButton.Add_Click({
     $buttonRevoke.Add_Click({
         $samAccountName = $textBoxSamAccount.Text.Trim()
         if (-not [string]::IsNullOrWhiteSpace($samAccountName)) {
-            $user = Get-ADUser -Identity $samAccountName -Properties UserPrincipalName
+            $user = Get-ADUser -Server $server -Identity $samAccountName -Properties UserPrincipalName
             if ($user) {
                 $userUPN = $user.UserPrincipalName
                 $licensesToRevoke = @()
@@ -1608,7 +1609,7 @@ function IHS-BLKLICTASK {
         $assignLicenses = $user.AssignLicenses.Split(",") -replace " ", ""
         $revokeLicenses = $user.RevokeLicenses.Split(",") -replace " ", ""
 
-        $adUser = Get-ADUser -Filter {SamAccountName -eq $samAccountName} -Properties UserPrincipalName
+        $adUser = Get-ADUser -Server $server -Filter {SamAccountName -eq $samAccountName} -Properties UserPrincipalName
         if ($adUser) {
             $userUPN = $adUser.UserPrincipalName
             $licensesToAssign = @()
@@ -1685,7 +1686,7 @@ foreach ($user in $samAccountNames) {
 
     if ($samAccountName) {
         try {
-            $adUser = Get-ADUser -Identity $samAccountName -Properties UserPrincipalName -ErrorAction Stop
+            $adUser = Get-ADUser -Server $server -Identity $samAccountName -Properties UserPrincipalName -ErrorAction Stop
             
             if ($adUser) {
                 $userUPN = $adUser.UserPrincipalName
@@ -1727,45 +1728,48 @@ Write-Host "License details exported to $IHSUSOULICSTS"
 } 
 
 function IHS-USBDFWDSTS {
-
 $userListPath = "C:\IHS-Application\IHS-Template.csv"
 $outputPath = "C:\IHS-Application\IHS-Forwarding-Report-$(Get-Date -Format dd-MM-yy_hh-mm).csv"
-
 $userList = Import-Csv -Path $userListPath | Select-Object -ExpandProperty UserPrincipalName
-
 $forwardingReport = @()
-
 foreach ($user in $userList) {
     try {
-        $mailboxSettings = Get-MgUserMailboxSetting -UserId $user -ErrorAction SilentlyContinue
-
-        if ($mailboxSettings.ForwardingSmtpAddress) {
-            $forwardingReport += [PSCustomObject]@{
-                UserPrincipalName          = $user
-                ForwardingSMTPAddress      = $mailboxSettings.ForwardingSmtpAddress
-                KeepCopyInMailbox          = $mailboxSettings.KeepForwardedMessages
-                ForwardingEnabled          = $true
+        $mailbox = Get-Mailbox -Identity $user -ErrorAction SilentlyContinue
+        if ($mailbox) {
+            $forwardingSMTP = $mailbox.ForwardingSMTPAddress
+            $forwardingAddress = $mailbox.ForwardingAddress
+            $deliverToMailboxAndForward = $mailbox.DeliverToMailboxAndForward
+            if ($forwardingSMTP -or $forwardingAddress) {
+                $forwardingReport += [PSCustomObject]@{
+                    UserPrincipalName          = $user
+                    DisplayName                = $mailbox.DisplayName
+                    PrimarySMTPAddress         = $mailbox.PrimarySmtpAddress
+                    ForwardingSMTPAddress      = $forwardingSMTP
+                    ForwardingAddress          = if ($forwardingAddress) { (Get-Recipient -Identity $forwardingAddress).PrimarySmtpAddress } else { $null }
+                    DeliverToMailboxAndForward = $deliverToMailboxAndForward
+                }
+            } else {
+                $forwardingReport += [PSCustomObject]@{
+                    UserPrincipalName          = $user
+                    DisplayName                = $mailbox.DisplayName
+                    PrimarySMTPAddress         = $mailbox.PrimarySmtpAddress
+                    ForwardingSMTPAddress      = "No forwarding"
+                    ForwardingAddress          = "No forwarding"
+                    DeliverToMailboxAndForward = $deliverToMailboxAndForward
+                }
             }
-            Write-Host "Forwarding enabled for user: $user" -ForegroundColor Green
         } else {
-            $forwardingReport += [PSCustomObject]@{
-                UserPrincipalName          = $user
-                ForwardingSMTPAddress      = "No forwarding"
-                KeepCopyInMailbox          = $null
-                ForwardingEnabled          = $false
-            }
+            Write-Host "Mailbox not found for user: $user" -ForegroundColor Red
         }
+
     } catch {
-        Write-Host "Error retrieving forwarding settings for user: $user - $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host "Error retrieving forwarding settings for $user : $($_.Exception.Message)" -ForegroundColor Red
     }
 }
 
-if ($forwardingReport.Count -gt 0) {
-    $forwardingReport | Export-Csv -Path $outputPath -NoTypeInformation -Force
-    Write-Host "Forwarding report generated at: $outputPath" -ForegroundColor Green
-} else {
-    Write-Host "No forwarding settings found for any users." -ForegroundColor Yellow
-}
+$forwardingReport | Export-Csv -Path $outputPath -NoTypeInformation -Force
+
+Write-Host "Forwarding report generated at: $outputPath" -ForegroundColor Green
 
 }
 
@@ -1913,15 +1917,15 @@ $headers = @("Service", "Module Status", "Connection Status", "Action")
 $services = @{
     "Azure AD" = @{
         ModuleName = "AzureAD"
-        ConnectCmd = { Connect-AzureAD -ShowBanner:$false }
+        ConnectCmd = { Connect-AzureAD } # -ShowBanner:$false 
     }
     "Exchange Online" = @{
         ModuleName = "ExchangeOnlineManagement"
-        ConnectCmd = { Connect-ExchangeOnline -ShowBanner:$false }
+        ConnectCmd = { Connect-ExchangeOnline } # -ShowBanner:$false 
     }
     "Microsoft Graph" = @{
         ModuleName = "Microsoft.Graph"
-        ConnectCmd = { Connect-MgGraph -ShowBanner:$false  } #-Scopes "User.Read.All" 
+        ConnectCmd = {Connect-MgGraph } # -ShowBanner:$false  -Scopes "User.Read.All" 
     }
 }
 
@@ -2116,7 +2120,7 @@ $helpPanel.Controls.Add($helpLabel)
     $logoutButton.Add_MouseEnter({ $logoutButton.BackColor = "DarkRed" })
     $logoutButton.Add_MouseLeave({ $logoutButton.BackColor = "Gray" })
 
-     $IHDNDLBT = New-Object System.Windows.Forms.Button
+    $IHDNDLBT = New-Object System.Windows.Forms.Button
     $IHDNDLBT.Text = "Module Check"
     $IHDNDLBT.Location = New-Object System.Drawing.Point(282, 10)
     $IHDNDLBT.AutoSize = $True
@@ -2328,7 +2332,7 @@ $IHSGRPTSK.Add_MouseLeave({
 })
 
 $M365IHS = New-Object System.Windows.Forms.Label
-$M365IHS.Text = "IndisCore UPL Script : M365 Menu"
+$M365IHS.Text = "IndiaCore UPL Script : M365 Menu"
 $M365IHS.AutoSize = $True
 $M365IHS.Size = New-Object System.Drawing.Size(250, 30) # Set the desired width and height
 $M365IHS.Location = New-Object System.Drawing.Point(6, 200)
