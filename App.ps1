@@ -143,9 +143,10 @@ public class User32 {
     $loginButton.Text = "Login"
     $loginButton.Size = New-Object System.Drawing.Size(200, 30)
     $loginButton.Location = New-Object System.Drawing.Point(50, 220)
-    $loginButton.BackColor = [System.Drawing.Color]::Gray
+    $loginButton.BackColor = [System.Drawing.Color]::FromArgb(70, 130, 180)
     $loginButton.ForeColor = [System.Drawing.Color]::White
     $loginButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $loginButton.Font = New-Object System.Drawing.Font("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
     $loginButton.FlatAppearance.BorderSize = 0
     $controlsPanel.Controls.Add($loginButton)
 
@@ -221,18 +222,66 @@ function Show-ModuleStatusForm {
         $mainPanel.Controls.Add($header, $_, 0)
     }
 
+
+$consoleSupportSource = @’
+using System;
+using System.Runtime.InteropServices;
+public class ConsoleSupportMethods
+{
+   [DllImport("kernel32.dll", SetLastError = true)]
+   public static extern int AllocConsole();
+
+   [DllImport("kernel32.dll", SetLastError = true)]
+   public static extern int FreeConsole();
+}
+‘@
+
     $services = @{
         "Azure AD" = @{
             ModuleName = "AzureAD"
-            ConnectCmd = { Connect-AzureAD }  #-ShowBanner:$false 
+            ConnectCmd = {  
+            Add-Type -TypeDefinition $consoleSupportSource
+try
+{
+   [ConsoleSupportMethods]::AllocConsole();
+   Connect-AzureAD;
+}
+catch
+{
+   throw;
+}
+finally
+{
+   [ConsoleSupportMethods]::FreeConsole();
+}
+            
+            }
         }
         "Exchange Online" = @{
             ModuleName = "ExchangeOnlineManagement"
-            ConnectCmd = { Connect-ExchangeOnline }  #-ShowBanner:$false 
-        }
+            ConnectCmd = { Add-Type -TypeDefinition $consoleSupportSource 
+            try { [ConsoleSupportMethods]::AllocConsole(); Connect-ExchangeOnline; } catch { throw; } finally {[ConsoleSupportMethods]::FreeConsole();} }
+}
+
+
         "Microsoft Graph" = @{
             ModuleName = "Microsoft.Graph"
-            ConnectCmd = { Connect-MgGraph }
+            ConnectCmd = { 
+            Add-Type -TypeDefinition $consoleSupportSource
+try
+{
+   [ConsoleSupportMethods]::AllocConsole();
+   Connect-MgGraph;
+}
+catch
+{
+   throw;
+}
+finally
+{
+   [ConsoleSupportMethods]::FreeConsole();
+}
+             }
         }
     }
 
@@ -290,22 +339,34 @@ function Show-ModuleStatusForm {
         $connectButton.Tag = @{
             Service = $service
             StatusLabel = $connectionStatus
+            ConnectCmd = $services[$service].ConnectCmd
         }
 
         $connectButton.Add_Click({
             $serviceInfo = $this.Tag
             $service = $serviceInfo.Service
             $status = $serviceInfo.StatusLabel
+            $connectCmd = $serviceInfo.ConnectCmd
+
 
             $this.Enabled = $false
             $status.Text = "⟳ Connecting..."
             $status.ForeColor = [System.Drawing.Color]::Blue
 
-            Start-Job -Name "Connect_$service" -ScriptBlock {
-                param($serviceName, $moduleData)
-                Import-Module $moduleData.ModuleName -Force
-                & $moduleData.ConnectCmd
-            } -ArgumentList $service, $services[$service]
+                        try {
+                # Run the connection command synchronously
+                & $connectCmd
+                $status.Text = "✓ Connected"
+                $status.ForeColor = [System.Drawing.Color]::Green
+                $this.Text = "Connected"
+                $this.BackColor = [System.Drawing.Color]::FromArgb(225, 240, 225)
+            } catch {
+                $status.Text = "✗ Failed"
+                $status.ForeColor = [System.Drawing.Color]::Red
+                $this.Text = "Connect"
+                $this.Enabled = $true
+                [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, "Connection Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+            }
         })
 
         $mainPanel.Controls.Add($connectButton, 3, $row)
@@ -1774,10 +1835,6 @@ Write-Host "Forwarding report generated at: $outputPath" -ForegroundColor Green
 }
 
 function IHS-USBDDLGSTS {
-function Check-ExchangeOnlineModule { if (-not (Get-Module -ListAvailable -Name ExchangeOnlineManagement)) {  Write-Host "Exchange Online Management module is not installed. Installing it now..."  Install-Module -Name ExchangeOnlineManagement -Force -AllowClobber -Scope CurrentUser  } else {  Write-Host "Exchange Online Management module is already installed."  }}
-function Connect-ToExchangeOnlineFWD {  try {  Connect-ExchangeOnline  } catch { Write-Host "Error connecting to Exchange Online: $_"  exit 1 }  Write-Host "Successfully connected to Exchange Online."  }
-Check-ExchangeOnlineModule   
-Connect-ToExchangeOnlineFWD
 
 $userListPath = "C:\IHS-Application\IHS-Template.csv"
 $outputPath = "C:\IHS-Application\IHS-CombinedDelegationReport-$(Get-Date -Format yyyy-MM-dd_hh-mm-ss).csv"
