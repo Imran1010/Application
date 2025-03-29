@@ -1,23 +1,20 @@
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
-
 $MKDIR = "C:\IHS-Application"
 $ALL = "C:\IHS-Application\IHS-Template.csv"
-if (-not (Test-Path $MKDIR)) {
-New-Item -Path $MKDIR -ItemType Directory 
-}
 $IHSCSV = "UserName,AssignLicenses,RevokeLicenses,AddGroups,RemoveGroups,DLName,UserPrincipalName,Action.ToLower,DelegateUserPrincipalName,PermissionType"
+$server = "UMUMWPDC01.upl.com" 
+$currentDate = (Get-Date).ToString("dd-MM-yyyy")
+$maximumfunctioncount = '32768'
+
+if (-not (Test-Path $MKDIR)) { New-Item -Path $MKDIR -ItemType Directory }
 Set-Content -Path $ALL -Value $IHSCSV
 Start-Transcript -Path C:\IHS-Application\IHS-LOGS-PS-MENU.log -Append
 Get-Date -Format "dddd MM/dd/yyyy HH:mm K"
-$maximumfunctioncount = '32768'
-$server = "UMUMWPDC01.upl.com"
 
 
 function Get-ImageFromUrl {
-    param (
-        [string]$Url
-    )
+    param ( [string]$Url)
     try {
         $webClient = New-Object System.Net.WebClient
         $imageStream = $webClient.OpenRead($Url)
@@ -43,6 +40,7 @@ function Fetch-GistContent {
     }
 }
 
+
 function New-StyledButton {
     param (
         [string]$Text,
@@ -55,16 +53,18 @@ function New-StyledButton {
     $button.Location = New-Object System.Drawing.Point($X, $Y)
     $button.Size = New-Object System.Drawing.Size($Width, $Height)
     $button.Text = $Text
+    $button.AutoSize = $True
     $button.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
     $button.FlatAppearance.BorderSize = 0
-    $button.BackColor = [System.Drawing.Color]::FromArgb(70, 130, 180)
+    $button.BackColor = [System.Drawing.Color]::Green
     $button.ForeColor = [System.Drawing.Color]::White
     $button.Font = New-Object System.Drawing.Font("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
     $button.Cursor = [System.Windows.Forms.Cursors]::Hand
-    $button.Add_MouseEnter({ $this.BackColor = [System.Drawing.Color]::FromArgb(100, 160, 210) })
-    $button.Add_MouseLeave({ $this.BackColor = [System.Drawing.Color]::FromArgb(70, 130, 180) })
+    $button.Add_MouseEnter({ $this.BackColor = [System.Drawing.Color]::FromArgb(150, 24, 39) })
+    $button.Add_MouseLeave({ $this.BackColor = [System.Drawing.Color]::Green })
     return $button
 }
+
 
 function New-StyledForm {
     param (
@@ -115,6 +115,16 @@ public class User32 {
     $controlsPanel.BackColor = [System.Drawing.Color]::FromArgb(0, [System.Drawing.Color]::White) 
     $backgroundPanel.Controls.Add($controlsPanel)
 
+    $welcomeLabel = New-Object System.Windows.Forms.Label
+    $welcomeLabel.Text = "Welcome to IHS Advanced Menu"
+    $welcomeLabel.AutoSize = $True
+    $welcomeLabel.Font = New-Object System.Drawing.Font("Segoe UI", 15, [System.Drawing.FontStyle]::Bold)
+    $welcomeLabel.ForeColor = [System.Drawing.Color]::white
+    $welcomeLabel.BackColor = [System.Drawing.Color]::Transparent
+    $welcomeLabel.Location = New-Object System.Drawing.Point(100, 50) # Adjust position below the logo
+    $backgroundPanel.Controls.Add($welcomeLabel)
+
+
     $profilePicture = New-Object System.Windows.Forms.PictureBox
     $profilePictureUrl = "https://github.com/Imran1010/Applogin/blob/main/Logo.png?raw=true" 
     $profileImage = Get-ImageFromUrl -Url $profilePictureUrl
@@ -139,6 +149,7 @@ public class User32 {
     [User32]::SendMessage($passwordBox.Handle, $EM_SETCUEBANNER, 0, "Password")
     $controlsPanel.Controls.Add($passwordBox)
 
+    $loginButton = New-StyledButton
     $loginButton = New-Object System.Windows.Forms.Button
     $loginButton.Text = "Login"
     $loginButton.Size = New-Object System.Drawing.Size(200, 30)
@@ -151,6 +162,7 @@ public class User32 {
     $controlsPanel.Controls.Add($loginButton)
 
     $loginButton.Add_Click({
+            
         $url = "https://raw.githubusercontent.com/Imran1010/Applogin/refs/heads/main/README.md"
         $gistContent = Fetch-GistContent -url $url
         if ($null -ne $gistContent) {
@@ -205,21 +217,24 @@ function Show-ModuleStatusForm {
     }
 
     $headerStyle = @{
-        Font = New-Object System.Drawing.Font("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
-        BackColor = [System.Drawing.Color]::FromArgb(240, 240, 240)
-        ForeColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
+        Font      = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        ForeColor = [System.Drawing.Color]::Black
+        BackColor = [System.Drawing.Color]::LightGray
+        Dock      = "Fill"
+        TextAlign = "MiddleCenter"
     }
 
     $headers = @("Service", "Module Status", "Connection Status", "Action")
     0..3 | ForEach-Object {
-        $header = New-Object System.Windows.Forms.Label
-        $header.Text = $headers[$_]
-        $header.Font = $headerStyle.Font
-        $header.BackColor = $headerStyle.BackColor
-        $header.ForeColor = $headerStyle.ForeColor
-        $header.Dock = "Fill"
-        $header.TextAlign = "MiddleCenter"
-        $mainPanel.Controls.Add($header, $_, 0)
+        $headerLabel = New-Object System.Windows.Forms.Label
+        $headerLabel.Text = $headers[$_]
+        $headerLabel.AutoSize = $true
+        $headerLabel.Dock = $headerStyle.Dock
+        $headerLabel.Font = $headerStyle.Font
+        $headerLabel.ForeColor = $headerStyle.ForeColor
+        $headerLabel.BackColor = $headerStyle.BackColor
+        $headerLabel.TextAlign = $headerStyle.TextAlign
+        $mainPanel.Controls.Add($headerLabel, $_, 0)
     }
 
 
@@ -241,19 +256,19 @@ public class ConsoleSupportMethods
             ModuleName = "AzureAD"
             ConnectCmd = {  
             Add-Type -TypeDefinition $consoleSupportSource
-try
-{
-   [ConsoleSupportMethods]::AllocConsole();
-   Connect-AzureAD;
-}
-catch
-{
-   throw;
-}
-finally
-{
-   [ConsoleSupportMethods]::FreeConsole();
-}
+        try
+            {
+                [ConsoleSupportMethods]::AllocConsole();
+                Connect-AzureAD;
+            }
+            catch
+            {
+                throw;
+            }
+            finally
+            {
+                [ConsoleSupportMethods]::FreeConsole();
+            }
             
             }
         }
@@ -329,13 +344,11 @@ finally
         $connectionStatus.ForeColor = [System.Drawing.Color]::Red
         $mainPanel.Controls.Add($connectionStatus, 2, $row)
 
-        $connectButton = New-Object System.Windows.Forms.Button
+
+        $connectButton = New-StyledButton
         $connectButton.Text = "Connect"
-        $connectButton.Font = $labelStyle.Font
         $connectButton.Dock = "Fill"
         $connectButton.Margin = New-Object System.Windows.Forms.Padding(10, 5, 10, 5)
-        $connectButton.BackColor = [System.Drawing.Color]::FromArgb(240, 240, 240)
-        $connectButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
         $connectButton.Tag = @{
             Service = $service
             StatusLabel = $connectionStatus
@@ -710,7 +723,7 @@ if ($UGDNInputResult -eq [System.Windows.Forms.DialogResult]::OK) {
 
 function IHS-GRPLFT {
 
-Add-Type -AssemblyName System.Windows.Forms
+
 
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "User Group Assignment"
@@ -782,7 +795,6 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
 
 function IHS-ADEXP-PT {
 
-$currentDate = (Get-Date).ToString("dd-MM-yyyy")
 
 $IHSEXPATH = "C:\IHS-Application\ADUserexport-$currentDate.csv"
 
@@ -2102,6 +2114,113 @@ $IHSFMMD.Add_FormClosing({
 }
 
 
+function IHS-DLEXP {
+$IHSFMOU = New-Object System.Windows.Forms.Form
+$IHSFMOU.Text = "Dl User Export"
+$IHSFMOU.Size = New-Object System.Drawing.Size(300, 150)
+$IHSFMOU.StartPosition = "CenterScreen"
+
+$IHSLBOU = New-Object System.Windows.Forms.Label
+$IHSLBOU.Text = "Enter Dl Mail ID :"
+$IHSLBOU.AutoSize = $true
+$IHSLBOU.Location = New-Object System.Drawing.Point(10, 20)
+$IHSFMOU.Controls.Add($IHSLBOU)
+
+$textBox = New-Object System.Windows.Forms.TextBox
+$textBox.Location = New-Object System.Drawing.Point(10, 40)
+$textBox.Size = New-Object System.Drawing.Size(260, 20)
+$IHSFMOU.Controls.Add($textBox)
+
+$okButton = New-Object System.Windows.Forms.Button
+$okButton.Location = New-Object System.Drawing.Point(50, 80)
+$okButton.Size = New-Object System.Drawing.Size(75, 23)
+$okButton.Text = "OK"
+$okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+$IHSFMOU.Controls.Add($okButton)
+
+$cancelButton = New-Object System.Windows.Forms.Button
+$cancelButton.Location = New-Object System.Drawing.Point(150, 80)
+$cancelButton.Size = New-Object System.Drawing.Size(75, 23)
+$cancelButton.Text = "Cancel"
+$cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+$IHSFMOU.Controls.Add($cancelButton)
+
+$result = $IHSFMOU.ShowDialog()
+
+if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+    $IHSDL = $textBox.Text
+    $outputPath = "C:\IHS-Application\$IHSDL-$((Get-Date).ToString('yyyy-MM-dd_hh-mm-ss')).csv"
+
+    Get-DistributionGroupMember -ResultSize unlimited -Identity $IHSDL |Select PrimarySmtpAddress, Name ,WindowsLiveID | Export-csv -path $outputPath -NoTypeInformation -Encoding UTF8
+
+
+
+
+    [System.Windows.Forms.MessageBox]::Show("Thanks for Using IHS Script `nDL Users has been successfully Exported .", "Export Successful", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+
+} else {
+    Write-Host "Operation canceled." -ForegroundColor Red
+ [System.Windows.Forms.MessageBox]::Show("Operation canceled", "Retry", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+
+}
+
+
+}
+
+function IHS-DDLEXP {
+$IHSFMOU = New-Object System.Windows.Forms.Form
+$IHSFMOU.Text = "DDl User Export"
+$IHSFMOU.Size = New-Object System.Drawing.Size(300, 150)
+$IHSFMOU.StartPosition = "CenterScreen"
+
+$IHSLBOU = New-Object System.Windows.Forms.Label
+$IHSLBOU.Text = "Enter DDl Mail ID :"
+$IHSLBOU.AutoSize = $true
+$IHSLBOU.Location = New-Object System.Drawing.Point(10, 20)
+$IHSFMOU.Controls.Add($IHSLBOU)
+
+$textBox = New-Object System.Windows.Forms.TextBox
+$textBox.Location = New-Object System.Drawing.Point(10, 40)
+$textBox.Size = New-Object System.Drawing.Size(260, 20)
+$IHSFMOU.Controls.Add($textBox)
+
+$okButton = New-Object System.Windows.Forms.Button
+$okButton.Location = New-Object System.Drawing.Point(50, 80)
+$okButton.Size = New-Object System.Drawing.Size(75, 23)
+$okButton.Text = "OK"
+$okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+$IHSFMOU.Controls.Add($okButton)
+
+$cancelButton = New-Object System.Windows.Forms.Button
+$cancelButton.Location = New-Object System.Drawing.Point(150, 80)
+$cancelButton.Size = New-Object System.Drawing.Size(75, 23)
+$cancelButton.Text = "Cancel"
+$cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+$IHSFMOU.Controls.Add($cancelButton)
+
+$result = $IHSFMOU.ShowDialog()
+
+if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+    $IHSDDL = $textBox.Text
+    $outputDLPath = "C:\IHS-Application\$IHSDDL-$((Get-Date).ToString('yyyy-MM-dd_hh-mm-ss')).csv"
+
+    Get-DynamicDistributionGroupMember -ResultSize unlimited -Identity $IHSDDL |Select PrimarySmtpAddress, Name, WindowsLiveID| Export-csv -path $outputDLPath -NoTypeInformation -Encoding UTF8
+    #, CustomAttribute1, CustomAttribute2, CustomAttribute3, CustomAttribute4, CustomAttribute5, CustomAttribute6, CustomAttribute7, CustomAttribute8, CustomAttribute9, CustomAttribute10, CustomAttribute11, CustomAttribute12, CustomAttribute13, CustomAttribute14, CustomAttribute15 
+
+
+
+    [System.Windows.Forms.MessageBox]::Show("Thanks for Using IHS Script `nDDL Users has been successfully Exported .", "Export Successful", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+
+} else {
+    Write-Host "Operation canceled." -ForegroundColor Red
+ [System.Windows.Forms.MessageBox]::Show("Operation canceled", "Retry", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+
+}
+
+
+}
+
+
 function Show-MainForm {
 
 function Get-ImageFromUrl1 {
@@ -2146,7 +2265,7 @@ $backgroundPanel1.Controls.Add($controlsPanel)
 $labelIHS = New-Object System.Windows.Forms.Label
 $labelIHS.Text = "IndiaCore UPL Script : AD Menu"
 $labelIHS.AutoSize = $True
-$labelIHS.Size = New-Object System.Drawing.Size(248, 30) 
+$labelIHS.Size = New-Object System.Drawing.Size(245, 30) 
 $labelIHS.Location = New-Object System.Drawing.Point(6, 10)
 $labelIHS.Font = New-Object System.Drawing.Font("Cambria",14,[System.Drawing.FontStyle]::Bold)
 $labelIHS.ForeColor = "Black"
@@ -2174,23 +2293,31 @@ $helpPanel.Controls.Add($helpLabel)
                 Show-LoginForm  
                 $form.Close()
     })
-    $logoutButton.Add_MouseEnter({ $logoutButton.BackColor = "DarkRed" })
-    $logoutButton.Add_MouseLeave({ $logoutButton.BackColor = "Gray" })
+    $logoutButton.Add_MouseEnter({ $logoutButton.BackColor = "DarkRed"
+    $helpLabel.Text = "Back to Login Page"
+ })
+    $logoutButton.Add_MouseLeave({ $logoutButton.BackColor = "Gray"  
+    $helpLabel.Text = "Hover over any button to see its description here..."
+ })
 
     $IHDNDLBT = New-Object System.Windows.Forms.Button
     $IHDNDLBT.Text = "Module Check"
-    $IHDNDLBT.Location = New-Object System.Drawing.Point(282, 10)
+    $IHDNDLBT.Location = New-Object System.Drawing.Point(290, 10)
     $IHDNDLBT.AutoSize = $True
     $IHDNDLBT.ForeColor = "White"
     $IHDNDLBT.BackColor = "Gray"
     $IHDNDLBT.Add_Click({
              Show-ModuleStatusForm    
     })
-    $IHDNDLBT.Add_MouseEnter({ $IHDNDLBT.BackColor = "DarkRed" })
-    $IHDNDLBT.Add_MouseLeave({ $IHDNDLBT.BackColor = "Gray" })
+    $IHDNDLBT.Add_MouseEnter({ $IHDNDLBT.BackColor = "DarkRed" 
+    $helpLabel.Text = "Install or connect Module if requred Exhange or Msgraph related task"
+})
+    $IHDNDLBT.Add_MouseLeave({ $IHDNDLBT.BackColor = "Gray"
+    $helpLabel.Text = "Hover over any button to see its description here..."
+     })
 
 $script1Button = New-Object System.Windows.Forms.Button
-$script1Button.Text = "User Password Reset"
+$script1Button.Text = "Password Reset"
 $script1Button.AutoSize = $True
 $script1Button.Location = New-Object System.Drawing.Point(10, 40)
 $script1Button.ForeColor = "White"
@@ -2201,7 +2328,7 @@ $script1Button.Add_Click({
 })
 $script1Button.Add_MouseEnter({
     $script1Button.BackColor = "DarkRed"
-    $helpLabel.Text = "User Password Reset`n`nThis tool allows administrators to reset user passwords in Active Directory.`n`nFeatures:`n- Secure password generation`n- Immediate password reset`n- Forces password change at next logon`n- Logs password reset actions"
+    $helpLabel.Text = "User Password Reset`n`nThis tool allows administrators to reset user passwords from Active Directory.`n`nFeatures:`n- Secure password generation`n- Immediate password reset`n- Forces password change at next logon`n- Logs password reset actions"
 })
 $script1Button.Add_MouseLeave({
     $script1Button.BackColor = "Green"
@@ -2209,7 +2336,7 @@ $script1Button.Add_MouseLeave({
 })
 
 $EmailUPIHS = New-Object System.Windows.Forms.Button
-$EmailUPIHS.Text = "User Email Update"
+$EmailUPIHS.Text = "Email Update"
 $EmailUPIHS.AutoSize = $True
 $EmailUPIHS.Location = New-Object System.Drawing.Point(270, 40)
 $EmailUPIHS.ForeColor = "White"
@@ -2248,7 +2375,7 @@ $CMTIHS.Add_MouseLeave({
 })
 
 $GPLFTIHS = New-Object System.Windows.Forms.Button
-$GPLFTIHS.Text = "Group Lifting After Mapping"
+$GPLFTIHS.Text = "Group Copy"
 $GPLFTIHS.AutoSize = $True
 $GPLFTIHS.Location = New-Object System.Drawing.Point(10, 70)
 $GPLFTIHS.ForeColor = "White"
@@ -2267,7 +2394,7 @@ $GPLFTIHS.Add_MouseLeave({
 })
 
 $script2Button = New-Object System.Windows.Forms.Button
-$script2Button.Text = "AD User Dump IHS Report "
+$script2Button.Text = "AD User Report "
 $script2Button.AutoSize = $True
 $script2Button.Location = New-Object System.Drawing.Point(10, 100)
 $script2Button.ForeColor = "White"
@@ -2288,7 +2415,7 @@ $script2Button.Add_MouseLeave({
 })
 
 $script3Button = New-Object System.Windows.Forms.Button
-$script3Button.Text = "AD Export OU BASED"
+$script3Button.Text = "OU BASED User Export"
 $script3Button.AutoSize = $True
 $script3Button.Location = New-Object System.Drawing.Point(270, 100)
 $script3Button.ForeColor = "White"
@@ -2307,7 +2434,7 @@ $script3Button.Add_MouseLeave({
 })
 
 $script4Button = New-Object System.Windows.Forms.Button
-$script4Button.Text = "AD Export as List based"
+$script4Button.Text = "template User Export"
 $script4Button.AutoSize = $True
 $script4Button.Location = New-Object System.Drawing.Point(10, 130)
 $script4Button.ForeColor = "White"
@@ -2368,7 +2495,7 @@ $IHSGRPEXP.Add_MouseLeave({
 })
 
 $IHSGRPTSK = New-Object System.Windows.Forms.Button
-$IHSGRPTSK.Text = "Multiple Group Task"
+$IHSGRPTSK.Text = "MultiGroup Task"
 $IHSGRPTSK.AutoSize = $True
 $IHSGRPTSK.Location = New-Object System.Drawing.Point(270, 160)
 $IHSGRPTSK.ForeColor = "White"
@@ -2398,7 +2525,7 @@ $M365IHS.ForeColor = "Black"
 
 
 $M365IHSIMID = New-Object System.Windows.Forms.Button
-$M365IHSIMID.Text = "Show Immutable ID"
+$M365IHSIMID.Text = "Immutable ID"
 $M365IHSIMID.AutoSize = $True
 $M365IHSIMID.Location = New-Object System.Drawing.Point(10, 230)
 $M365IHSIMID.ForeColor = "White"
@@ -2540,6 +2667,50 @@ $IHSUSBDDLGSTATUS.Add_MouseLeave({
 })
 
 
+$IHSDLEXP = New-Object System.Windows.Forms.Button
+$IHSDLEXP.Text = "DL User Export"
+$IHSDLEXP.AutoSize = $True
+$IHSDLEXP.Location = New-Object System.Drawing.Point(10, 320)
+$IHSDLEXP.ForeColor = "White"
+$IHSDLEXP.BackColor = "Green"
+$IHSDLEXP.Font = New-Object System.Drawing.Font("Cambria",12,[System.Drawing.FontStyle]::Bold)
+$IHSDLEXP.Add_Click({
+    IHS-DLEXP
+ 
+})
+$IHSDLEXP.Add_MouseEnter({
+    $IHSDLEXP.BackColor = "DarkRed"
+            $helpLabel.Text = "DL User Export Based on mail ID`n`nNote: For assistance, contact Ibrahim (India.coreitsupport@support.com)"
+
+})
+$IHSDLEXP.Add_MouseLeave({
+    $IHSDLEXP.BackColor = "Green"
+    $helpLabel.Text = "Hover over any button to see its description here..."
+})
+
+
+$IHSDDLEXP = New-Object System.Windows.Forms.Button
+$IHSDDLEXP.Text = "DDL User Export"
+$IHSDDLEXP.AutoSize = $True
+$IHSDDLEXP.Location = New-Object System.Drawing.Point(270, 320)
+$IHSDDLEXP.ForeColor = "White"
+$IHSDDLEXP.BackColor = "Green"
+$IHSDDLEXP.Font = New-Object System.Drawing.Font("Cambria",12,[System.Drawing.FontStyle]::Bold)
+$IHSDDLEXP.Add_Click({
+    IHS-DDLEXP
+ 
+})
+$IHSDDLEXP.Add_MouseEnter({
+    $IHSDDLEXP.BackColor = "DarkRed"
+            $helpLabel.Text = "DDL User Export Based on mail ID`n`nNote: For assistance, contact Ibrahim (India.coreitsupport@support.com)"
+
+})
+$IHSDDLEXP.Add_MouseLeave({
+    $IHSDDLEXP.BackColor = "Green"
+    $helpLabel.Text = "Hover over any button to see its description here..."
+})
+
+
 $form.Controls.Add($labelIHS)
 $form.Controls.Add($IHSBLKLIC)
 $form.Controls.Add($IHSM365LC)
@@ -2561,6 +2732,9 @@ $form.Controls.Add($IHSUSBDDLGSTATUS)
 $form.Controls.Add($logoutButton)
 $form.Controls.Add($helpPanel)
 $form.Controls.Add($IHDNDLBT)
+$form.Controls.Add($IHSDLEXP)
+$form.Controls.Add($IHSDLEXP)
+$form.Controls.Add($IHSDDLEXP)
 
 
 
