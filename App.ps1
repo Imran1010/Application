@@ -1,3 +1,14 @@
+Add-Type -AssemblyName  Microsoft.VisualBasic,
+                        PresentationCore,
+                        PresentationFramework,
+                        System.Drawing,
+                        System.Windows.Forms,
+                        WindowsBase,
+                        WindowsFormsIntegration
+
+[System.Windows.Forms.Application]::EnableVisualStyles()
+
+
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 $MKDIR = "C:\IHS-Application"
